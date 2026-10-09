@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# سامانه پزشکی مجازی (pj-hospital)
 
-## Getting Started
+سامانه مشاوره پزشکی آنلاین با کمک هوش مصنوعی. بیمار علائم خود را برای دستیار هوشمند توضیح می‌دهد،
+دستیار شرح حال کامل تهیه می‌کند و یک پیش‌نویس نسخه برای پزشک می‌سازد. **هیچ نسخه‌ای بدون بررسی و تأیید
+پزشک به بیمار نمایش داده نمی‌شود.**
 
-First, run the development server:
+## روند کار
+
+1. **بیمار** ثبت‌نام می‌کند (سن، جنسیت، سابقه بیماری و داروهای مصرفی) و یک «مشاوره جدید» شروع می‌کند.
+2. **دستیار هوشمند** (Claude) سؤالات لازم را می‌پرسد. در صورت وجود علائم هشدار، بیمار را به اورژانس (۱۱۵) ارجاع می‌دهد.
+3. بیمار گفتگو را «برای پزشک ارسال» می‌کند. هوش مصنوعی خلاصه بالینی، تشخیص اولیه، سطح فوریت و پیش‌نویس نسخه را تهیه می‌کند.
+4. **پزشک** در صف پرونده‌ها (مرتب‌شده بر اساس فوریت) پرونده را باز می‌کند، متن کامل گفتگو را می‌بیند،
+   تشخیص و داروها را ویرایش و نسخه را **تأیید** یا با ذکر دلیل **رد** می‌کند.
+5. بیمار نسخه تأییدشده یا یادداشت پزشک را در پنل خود می‌بیند.
+
+## فناوری‌ها
+
+- Next.js 15 (App Router) + React 19 + TypeScript
+- Tailwind CSS 4 + shadcn/ui (Radix) با چیدمان راست‌به‌چپ و فونت وزیرمتن
+- MongoDB + Mongoose
+- احراز هویت با کوکی امن (JWT امضاشده با `jose`) و هش رمز عبور با `bcryptjs`
+- Claude API (`@anthropic-ai/sdk`) برای گفتگوی پذیرش و تهیه خلاصه پرونده (خروجی ساختاریافته)
+
+## راه‌اندازی
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # مقادیر را تکمیل کنید
+npm run dev                  # http://localhost:8000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+متغیرهای محیطی:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| متغیر | توضیح |
+|---|---|
+| `MONGODB_URI` | آدرس اتصال MongoDB |
+| `JWT_SECRET` | رشته تصادفی حداقل ۳۲ کاراکتری برای امضای نشست‌ها (`openssl rand -base64 32`) |
+| `ANTHROPIC_API_KEY` | کلید Claude API |
+| `ANTHROPIC_MODEL` | (اختیاری) مدل Claude؛ پیش‌فرض `claude-opus-5-5` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+دستورات دیگر: `npm run build`، `npm start`، `npm run lint`.
 
-## Learn More
+### تأیید حساب پزشکان
 
-To learn more about Next.js, take a look at the following resources:
+حساب پزشک پس از ثبت‌نام «تأییدنشده» است و تا تأیید مدیر به پرونده بیماران دسترسی ندارد.
+پس از بررسی شماره نظام پزشکی، حساب را با دستور زیر فعال کنید:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run verify-doctor -- doctor@example.com
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ساختار پروژه
 
-## Deploy on Vercel
+```
+src/
+  app/
+    page.tsx                         صفحه اصلی
+    auth/{patient,doctor}/...        ورود و ثبت‌نام
+    patient/                         پنل بیمار (مشاوره‌ها و نسخه‌ها)
+    patient/chat/[id]/               گفتگو با دستیار هوشمند
+    doctor/                          صف پرونده‌ها
+    doctor/prescriptions/[id]/       بررسی، ویرایش و تأیید/رد نسخه
+    api/
+      auth/{register,login,logout,me}
+      chats, chats/[id], chats/[id]/messages, chats/[id]/submit
+      prescriptions, prescriptions/[id]
+  lib/
+    ai.ts            فراخوانی Claude (گفتگوی پذیرش + خلاصه ساختاریافته)
+    auth.ts          نشست، هش رمز عبور، کنترل دسترسی
+    session-token.ts امضا/اعتبارسنجی JWT (قابل استفاده در middleware)
+    db.ts            اتصال MongoDB
+    validations.ts   اعتبارسنجی ورودی‌ها با zod
+  middleware.ts      محافظت از مسیرهای /patient و /doctor
+  models/            User، Chat، Prescription
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| متد | مسیر | دسترسی | توضیح |
+|---|---|---|---|
+| POST | `/api/auth/register` | عمومی | ثبت‌نام بیمار یا پزشک (`role`) |
+| POST | `/api/auth/login` | عمومی | ورود (`email`، `password`، `role`) |
+| POST | `/api/auth/logout` | — | خروج |
+| GET | `/api/auth/me` | کاربر واردشده | اطلاعات حساب |
+| GET/POST | `/api/chats` | بیمار | فهرست / ایجاد مشاوره |
+| GET | `/api/chats/:id` | بیمار (مالک) | جزئیات گفتگو |
+| POST | `/api/chats/:id/messages` | بیمار (مالک) | ارسال پیام و دریافت پاسخ دستیار |
+| POST | `/api/chats/:id/submit` | بیمار (مالک) | ارسال پرونده برای پزشک |
+| GET | `/api/prescriptions` | بیمار / پزشک | نسخه‌های بیمار؛ برای پزشک `?scope=pending\|reviewed` |
+| GET | `/api/prescriptions/:id` | بیمار (مالک) / پزشک | جزئیات نسخه (برای پزشک همراه متن گفتگو) |
+| PATCH | `/api/prescriptions/:id` | پزشک | `{ action: "approve" \| "reject", diagnosis?, medications?, doctorNotes? }` |
+
+## نکات ایمنی
+
+- پیش‌نویس هوش مصنوعی (تشخیص، داروها، فوریت) تا تأیید پزشک از دید بیمار پنهان است و این قاعده در سمت سرور اعمال می‌شود.
+- هر نسخه فقط یک بار و فقط در وضعیت «در انتظار» قابل بررسی است.
+- این سامانه جایگزین خدمات اورژانس نیست.
+
+## کارهای پیشنهادی بعدی
+
+- پنل مدیریت برای تأیید پزشکان (به‌جای اسکریپت)
+- بازیابی رمز عبور از طریق ایمیل
+- اعلان (ایمیل/پیامک) هنگام تأیید نسخه
+- نمایش تدریجی (streaming) پاسخ دستیار
+- تست‌های خودکار با پایگاه داده آزمایشی
