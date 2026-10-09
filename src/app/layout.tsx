@@ -1,6 +1,7 @@
 import "./globals.css"
 import { Vazirmatn } from "next/font/google"
 import { cn } from "@/lib/utils"
+import { Providers } from "@/components/providers"
 
 const vazirmatn = Vazirmatn({ 
   subsets: ["arabic"],
@@ -24,7 +25,7 @@ export default function RootLayout({
         "min-h-screen bg-background font-sans antialiased",
         vazirmatn.variable
       )}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

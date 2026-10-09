@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
+import { apiFetch } from "@/lib/client"
 
 const specialties = [
   "پزشک عمومی",
@@ -23,6 +27,7 @@ const specialties = [
 ] as const
 
 export default function DoctorRegister() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,10 +39,27 @@ export default function DoctorRegister() {
     bio: ""
   })
 
+  const [loading, setLoading] = useState(false)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement registration logic
-    console.log(formData)
+    if (!formData.specialty) {
+      toast.error("تخصص را انتخاب کنید")
+      return
+    }
+    setLoading(true)
+    try {
+      await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ ...formData, role: "doctor" }),
+      })
+      toast.success("ثبت‌نام انجام شد. دسترسی به پرونده‌ها پس از تأیید شماره نظام پزشکی فعال می‌شود.")
+      router.replace("/doctor")
+      router.refresh()
+    } catch (err) {
+      toast.error((err as Error).message)
+      setLoading(false)
+    }
   }
 
   return (
@@ -62,6 +84,7 @@ export default function DoctorRegister() {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -75,7 +98,10 @@ export default function DoctorRegister() {
             <Input
               id="password"
               type="password"
+              autoComplete="new-password"
+              minLength={8}
               required
+              placeholder="حداقل ۸ کاراکتر"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               dir="ltr"
@@ -89,7 +115,7 @@ export default function DoctorRegister() {
               value={formData.specialty}
               onValueChange={(value) => setFormData({...formData, specialty: value})}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="انتخاب تخصص" />
               </SelectTrigger>
               <SelectContent>
@@ -140,17 +166,16 @@ export default function DoctorRegister() {
 
           <div className="space-y-2">
             <Label htmlFor="bio">درباره من</Label>
-            <Input
+            <Textarea
               id="bio"
-              type="text"
               value={formData.bio}
               onChange={(e) => setFormData({...formData, bio: e.target.value})}
               placeholder="سوابق و تخصص‌های خود را وارد کنید"
             />
           </div>
 
-          <Button type="submit" className="w-full">
-            ثبت‌نام
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "در حال ثبت‌نام..." : "ثبت‌نام"}
           </Button>
 
           <p className="text-center text-sm">
